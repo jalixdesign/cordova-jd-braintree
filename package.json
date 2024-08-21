@@ -1,9 +1,9 @@
 {
-  "name": "cordova-plugin-braintree",
-  "version": "0.6.5",
+  "name": "cordova-jd-braintree",
+  "version": "0.7.5",
   "description": "A Cordova plugin for the Braintree mobile payment processing SDK.",
   "cordova": {
-    "id": "cordova-plugin-braintree",
+    "id": "cordova-jd-braintree",
     "platforms": [
       "android",
       "ios"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/engineerapart/cordova-plugin-braintree"
+    "url": "git+https://github.com/engineerapart/cordova-plugin-braintree.git"
   },
   "keywords": [
     "cordova",
@@ -24,5 +24,17 @@
   "license": "MIT",
   "dependencies": {
     "xcode": "1.0.0"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/engineerapart/cordova-plugin-braintree/issues"
+  },
+  "homepage": "https://github.com/engineerapart/cordova-plugin-braintree#readme",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": ""
 }
