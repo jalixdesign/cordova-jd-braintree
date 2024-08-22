@@ -8,17 +8,70 @@ class BraintreePlugin: CDVPlugin {
     // Definiere die braintreeClient-Instanz
     var braintreeClient: BTAPIClient?
 
-    // Diese Methode wird automatisch aufgerufen, wenn das Plugin geladen wird
     override func pluginInitialize() {
-        // Beispiel-Token (Du solltest einen echten Token vom Server holen)
-        let token = "sandbox_tvsw733g_mdxf3sf6ggqsgktg"
-        
-        // Initialisiere den Braintree-Client mit dem Token
-        self.braintreeClient = BTAPIClient(authorization: token)
-        
-        print("Braintree Plugin initialized with token: \(token)")
+        // Token von der API laden und Braintree-Client initialisieren
+        fetchBraintreeToken { [weak self] token in
+            guard let token = token else {
+                print("Error: Token could not be retrieved")
+                return
+            }
+            
+            // Initialisiere den Braintree-Client mit dem erhaltenen Token
+            self?.braintreeClient = BTAPIClient(authorization: token)
+            print("Braintree Plugin initialized with token: \(token)")
+        }
     }
 
+    // API-Anfrage zum Abrufen des Braintree-Tokens
+    private func fetchBraintreeToken(completion: @escaping (String?) -> Void) {
+        let url = URL(string: "https://dev-apiv2.tennis-club.net/v2/braintreeTVA/getToken")!
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        // Setze die POST-Parameter
+        let params = "apiKey=8a72264a15e492ea287c5cbd9fd7e93f29b66fde4e60b8a9w8er7awer8asd564&bundleId=\(Bundle.main.bundleIdentifier ?? "")"
+        request.httpBody = params.data(using: .utf8)
+        
+        // Setze den Content-Type auf application/x-www-form-urlencoded
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        
+        // Führe die Anfrage aus
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Error fetching token: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            
+            guard let data = data else {
+                print("Error: No data received")
+                completion(nil)
+                return
+            }
+            
+            do {
+                // JSON-Antwort parsen
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                   let meta = json["meta"] as? [String: Any],
+                   let code = meta["code"] as? Int, code == 100,
+                   let data = json["data"] as? [String: Any],
+                   let token = data["token"] as? String {
+                    print("Braintree token received: \(token)")
+                    completion(token)
+                } else {
+                    print("Error parsing JSON or invalid response code")
+                    completion(nil)
+                }
+            } catch {
+                print("JSON error: \(error.localizedDescription)")
+                completion(nil)
+            }
+        }
+        
+        task.resume() // Starte den Netzwerkaufruf
+    }
+    
     var dropInUIcallbackId: String?
 
     @objc(presentDropInPaymentUI:)
