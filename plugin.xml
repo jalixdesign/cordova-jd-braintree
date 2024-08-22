@@ -47,69 +47,28 @@
 
     </platform>
 
+    
+
     <!-- iOS Configuration -->
     <platform name="ios">
 
-	<!-- Hook to embed iOS frameworks after ios platform added -->
-	    <hook type="after_platform_add" src="scripts/add_embedded_ios_frameworks.js" />
-	<!-- Hook to embed iOS frameworks after installation -->
-	    <hook type="after_plugin_install" src="scripts/add_embedded_ios_frameworks.js" />
+        <source-file src="src/ios/BraintreePlugin.swift" />
 
         <config-file target="config.xml" parent="/*">
             <feature name="BraintreePlugin">
                 <param name="ios-package" value="BraintreePlugin" />
                 <param name="onload" value="true" />
             </feature>
-        </config-file>
+        </config-file>        
 
-        <config-file target="*-Info.plist" parent="LSApplicationQueriesSchemes">
-          <array>
-            <string>com.paypal.ppclient.touch.v1</string>
-            <string>com.paypal.ppclient.touch.v2</string>
-            <string>com.venmo.touch.v2</string>
-          </array>
-        </config-file>
-
-        <config-file target="*-Info.plist" parent="CFBundleURLTypes">
-            <array>
-                <dict>
-                <key>CFBundleTypeRole</key>
-                <string>Editor</string>
-                <key>CFBundleURLSchemes</key>
-                <array>
-                    <string>${PRODUCT_BUNDLE_IDENTIFIER}braintree.payments</string>
-                </array>
-                </dict>
-            </array>
-        </config-file>
-
-        <config-file target="*-Info.plist" parent="NSCameraUsageDescription">
-            <string>Allows you to scan credit card using your camera.</string>
-        </config-file>
-        <config-file target="*-Info.plist" parent="NSPhotoLibraryUsageDescription">
-            <string>Allows you to scan credit card using your camera.</string>
-        </config-file>
-
-        <header-file src="src/ios/BraintreePlugin.h" />
-        <source-file src="src/ios/BraintreePlugin.m" />
-
-        <framework src="lib/ios/Braintree3DSecure.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeAmericanExpress.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeApplePay.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeCard.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeCore.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeDataCollector.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeDropIn.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreePaymentFlow.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreePayPal.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeUI.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeUIKit.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeUnionPay.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/BraintreeVenmo.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/CardIO.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/PayPalDataCollector.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/PayPalOneTouch.framework" custom="true" embed="true" weak="false" />
-        <framework src="lib/ios/PayPalUtils.framework" custom="true" embed="true" weak="false" />
+        <podspec>
+            <pods use-frameworks="true">
+                <pod name="BraintreeDropIn" version=">= 9.0.0" />
+                <pod name="Braintree" version=">= 6.23.3" />
+                <pod name="Braintree/DataCollector" version=">= 6.23.3" />
+                <pod name="Braintree/ApplePay" version=">= 6.23.3" />
+            </pods>
+        </podspec>
 
     </platform>
 

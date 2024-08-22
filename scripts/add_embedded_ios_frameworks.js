@@ -122,7 +122,7 @@ module.exports = function (context) {
 
 function fromDir(startPath, filter, rec, multiple){
   if (!fs.existsSync(startPath)) {
-    console.log('[cordova-plugin-braintree]==>no dir ', startPath);
+    console.log('[cordova-jd-braintree]==>no dir ', startPath);
     return;
   }
 
