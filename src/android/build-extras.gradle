@@ -13,6 +13,7 @@ dependencies {
     //implementation 'com.braintreepayments.api:paypal:4.45.0'
     //implementation 'com.braintreepayments.api:google-pay:4.45.0'
     implementation 'com.braintreepayments.api:drop-in:6.16.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
 
     //api 'com.braintreepayments.api:braintree:2.+'
     //api 'com.braintreepayments.api:drop-in:3.+'

@@ -3,6 +3,7 @@ package net.justincredible;
 import android.util.Log;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 
 import androidx.annotation.NonNull;
 
@@ -23,37 +24,164 @@ import com.braintreepayments.api.DropInResult;
 import com.google.android.gms.wallet.TransactionInfo;
 import com.google.android.gms.wallet.WalletConstants;
 
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
 public final class BraintreePlugin extends CordovaPlugin implements DropInListener {
 
     private static final String TAG = "BraintreePlugin";
-
-
+    private static final String TOKEN_PREFERENCES = "BraintreeTokenPreferences";
+    private static final String TOKEN_KEY = "BraintreeTokenKey";
     private DropInClient dropInClient = null;
     private CallbackContext _callbackContext = null;
+
+    String savedToken = null;
 
     @Override
     protected void pluginInitialize() {
         Log.d(TAG, "BraintreePlugin -> pluginInitialize");
-        // Hier wird sichergestellt, dass die Initialisierung im Hauptthread in der onCreate-Zeit erfolgt
-        cordova.getActivity().runOnUiThread(new Runnable() {
+
+        // Prüfe, ob der Token lokal gespeichert ist
+        savedToken = getSavedToken();
+        if (savedToken != null) {
+            Log.d(TAG, "Token found, initializing Braintree client with saved token: " + savedToken);
+            if (savedToken != null && !"null".equals(savedToken) && !savedToken.isEmpty()) {
+                initializeBraintreeClient(savedToken);
+            } else {
+                Log.d(TAG, "Token is either null or empty, skipping initialization.");
+            }
+            fetchTokenFromAPI(false);
+        } else {
+            Log.d(TAG, "No saved token found, fetching token from API.");
+            // Token nicht gefunden, hole den Token von der API
+            fetchTokenFromAPI(true);
+        }
+    }
+
+    // Methode zum Abrufen des gespeicherten Tokens
+    private String getSavedToken() {
+        SharedPreferences preferences = cordova.getActivity().getSharedPreferences(TOKEN_PREFERENCES, android.content.Context.MODE_PRIVATE);
+        return preferences.getString(TOKEN_KEY, null);  // Gibt null zurück, wenn kein Token vorhanden ist
+    }
+
+    // Methode zum Speichern des Tokens
+    private void saveToken(String token) {
+        Log.d(TAG, "Braintree saveToken");
+        SharedPreferences.Editor editor = cordova.getActivity().getSharedPreferences(TOKEN_PREFERENCES, android.content.Context.MODE_PRIVATE).edit();
+        editor.putString(TOKEN_KEY, token);
+        editor.commit();
+    }
+
+    // Methode, um den Token von der API zu holen
+    private void fetchTokenFromAPI(Boolean withRestart) {
+        Log.d(TAG, "Fetching token from API.");
+
+        String bundleId = cordova.getActivity().getPackageName();
+
+        MultipartBody.Builder builder = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("apiKey", "8a72264a15e492ea287c5cbd9fd7e93f29b66fde4e60b8a9w8er7awer8asd564")
+                .addFormDataPart("bundleId", bundleId);
+
+        RequestBody requestBody = builder.build();
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .url("https://dev-apiv2.tennis-club.net/v2/braintreeTVA/getToken")
+                .post(requestBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
             @Override
-            public void run() {
-                Log.d(TAG, "pluginInitialize: Called during Activity creation");
-                initializeBraintreeClient();
+            public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "Error fetching Braintree token: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String responseBody = response.body().string();
+                Log.d(TAG, "Full response: " + responseBody);
+
+                if (!response.isSuccessful()) {
+                    Log.e(TAG, "Error fetching token: Invalid response code " + response.code());
+                    return;
+                }
+
+                try {
+                    JSONObject jsonResponse = new JSONObject(responseBody);
+                    JSONObject meta = jsonResponse.getJSONObject("meta");
+                    int code = meta.getInt("code");
+
+                    if (code == 100) {
+                        JSONObject data = jsonResponse.getJSONObject("data");
+                        String token = data.getString("token");
+                        Log.d(TAG, "Braintree token received: " + token);
+
+                        // Token speichern
+                        saveToken(token);
+
+                        if ( withRestart || !token.equals(savedToken) ) {
+                            restartApp();
+                        }
+                    } else {
+                        Log.e(TAG, "Error fetching token: Invalid response code");
+                    }
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error parsing JSON response: " + e.getMessage());
+                }
             }
         });
     }
 
-    private void initializeBraintreeClient(){
-        Log.d(TAG, "initializeBraintreeClient: debug1");
-
-        dropInClient = new DropInClient(this.cordova.getActivity(), "sandbox_tvsw733g_mdxf3sf6ggqsgktg");
-
-        Log.d(TAG, "initializeBraintreeClient: debug2");
-
-        // Make sure to register listener in onCreate
-        dropInClient.setListener(this);
+    // Methode zum Initialisieren des Braintree-Clients
+    private void initializeBraintreeClient(String token) {
+        cordova.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                dropInClient = new DropInClient(cordova.getActivity(), token);
+                dropInClient.setListener(BraintreePlugin.this);
+                Log.d(TAG, "Braintree Client initialized with token.");
+            }
+        });
     }
+
+    // Methode zum Neustarten der App
+    private void restartApp() {
+        Log.d(TAG, "Braintree restartApp");
+        // Intent zum Starten der App erstellen
+        Intent intent = cordova.getActivity().getBaseContext().getPackageManager()
+                .getLaunchIntentForPackage(cordova.getActivity().getBaseContext().getPackageName());
+
+        if (intent != null) {
+            // Stelle sicher, dass die App richtig neu gestartet wird
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+            // App in einem neuen Thread neu starten, um Verzögerungen zu vermeiden
+            cordova.getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    // Startet die App neu
+                    cordova.getActivity().startActivity(intent);
+
+                    // Beende die aktuelle Activity, damit die App vollständig neu gestartet wird
+                    cordova.getActivity().finish();
+
+                    // Gib der App etwas Zeit, bevor sie neu startet
+                    System.exit(0);
+                }
+            });
+        } else {
+            Log.e(TAG, "Unable to restart the app: Launch intent is null.");
+        }
+    }
+
 
     @Override
     public synchronized boolean execute(String action, final JSONArray args, final CallbackContext callbackContext) throws JSONException {
@@ -103,6 +231,8 @@ public final class BraintreePlugin extends CordovaPlugin implements DropInListen
 
         Log.d(TAG, "presentDropInPaymentUI: debug0");
 
+        dropInClient.setListener(this);
+
         String betrag = args.getString(0);
 
         Log.d(TAG, "presentDropInPaymentUI: debug1");
@@ -137,7 +267,7 @@ public final class BraintreePlugin extends CordovaPlugin implements DropInListen
 
         PayPalCheckoutRequest request = new PayPalCheckoutRequest(args.getString(0));  // Specify the amount
         request.currencyCode(args.getString(1));  // Specify the currency
-        
+
         payPalClient.tokenizePayPalAccount(this.cordova.getActivity(), request, (payPalAccountNonce, error) -> {
             if (error != null) {
                 _callbackContext.error("PayPal Process Error: " + error.getMessage());
